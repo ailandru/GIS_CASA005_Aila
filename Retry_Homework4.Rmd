@@ -3,27 +3,55 @@ title: "Retry_Homework_4"
 output: html_document
 date: "2024-10-29"
 ---
+```{r}
+# Install the package if you haven't already
+install.packages("readr")
+install.packages("sf")
+install.packages("dplyr")  # For data manipulation
+install.packages("countrycode")
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Load the package
+library(readr)
+library(sf)
+library(dplyr)
+library(countrycode)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+#Reading the Data In 
+```{r}
+gender_data <- read_csv("Global_Gender_Inequality_Data.csv")
+world <- st_read("World_Countries_(Generalized)_9029012925078512962.geojson")
+```
+#Preparing the data
+```{r}
+gender_2010 <- gender_data %>% filter(year == 2010)
+gender_2019 <- gender_data %>% filter(year == 2019)
+```
+#Calculating the Difference in Gender Inequality 
+```{r}
+gender_diff <- gender_2010 %>%
+  inner_join(gender_2019, by = "countryIsoCode", suffix = c("_2010", "_2019")) %>%
+  mutate(inequality_diff = value_2019 - value_2010)
+```
+#Creating a new column in the geojson to later join the data 
+```{r}
+# Create a new column `countryIsoCode` in the world dataset using `ISO` codes
+world$countryIsoCode <- countrycode(world$ISO, "iso2c", "iso3c")
+```
+#Data joined 
+```{r}
+# Join the spatial data with the gender inequality difference data
+world_data <- world %>%
+  left_join(gender_diff, by = "countryIsoCode")
+```
+#Visualising in a map format 
+```{r}
+#visualize the data
+library(ggplot2)
+ggplot(world_data) +
+  geom_sf(aes(fill = inequality_diff)) +
+  theme_minimal() +
+  labs(title = "Gender Inequality Difference (2010-2019)",
+       fill = "Difference in GII")
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
